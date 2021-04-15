@@ -16,7 +16,7 @@ class Model:
 
     def molecular_opacity(self, my_temp, opacity_table):
 
-        fn = RegularGridInterpolator((self.x_full, temp_dict), opacity_table)
+        fn = RegularGridInterpolator((self.x_full, temperature_array), opacity_table)
         pt = (self.x_full, my_temp)
         y = fn(pt)
         return y
