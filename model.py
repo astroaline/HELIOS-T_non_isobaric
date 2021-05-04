@@ -1,4 +1,5 @@
 from input import *
+from load_files import *
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
@@ -13,6 +14,7 @@ class Model:
         self.bin_indices = bin_indices
         self.parameter_dict = parameter_dict
         self.opacity_grid = opacity_grid
+
 
     def molecular_opacity(self, my_temp, opacity_table):
 
@@ -34,62 +36,144 @@ class Model:
         ## calculates transit depth ##
 
         my_temp = self.parameter_dict["T"]
-        if self.parameter_dict["log_kappa_cloud"] == "Off":
-            if self.parameter_dict["log_kappa_0"] == "Off":
-                kappa_cloud = 0     # cloudfree case
-            else:
-                kappa_0 = 10 ** self.parameter_dict["log_kappa_0"]
-                r_c = 10 ** self.parameter_dict["log_r_c"]
-                x = 2 * np.pi * r_c * self.x_full
-                kappa_cloud = kappa_0 / (self.parameter_dict["Q0"] * (x ** -(self.parameter_dict["a"])) + x ** 0.2)
-        else:
-            kappa_cloud = 10**self.parameter_dict["log_kappa_cloud"]
-
         R0 = self.parameter_dict["R0"]*rjup
         P0 = (10**self.parameter_dict["log_P0"])*1e6   # convert to cgs
+        Rstar = self.parameter_dict["Rstar"]*rsun
+        G = self.parameter_dict["G"]
+        pressure_cia = 10**self.parameter_dict["log_p_cia"]
+
+        res = 2     # resolution for the opacities
+        step_size = int(res/0.01)
+
+        wavenumber_min = int(1e4/wavelength_bins[-1])
+        wavenumber_max = int(1e4/wavelength_bins[0])
+
+        epsilon = 0.000001
+        p0 = 10 + epsilon   # add some tiny value to p0 to avoid infinities in integration
+        
+
+
+        def load_opacity(temperature, pressure):
+
+            temp_str = str(temperature).zfill(5)     # temperature as in opacity filename
+
+            pressure_load = int(np.log10(pressure) * 100)
+
+            if pressure_load < 0:
+                pressure_str = 'n' + str(abs(pressure_load)).rjust(3, '0')  # pressure as in opacity filename
+            else:
+                pressure_str = 'p' + str(abs(pressure_load)).rjust(3, '0')
+
+            filename = '1H2-16O__POKAZATEL_e2b/Out_00000_42000_'+temp_str+'_'+pressure_str+'.bin'
+
+            data = []
+            with open(opacity_path + filename, "rb") as f:
+                byte = f.read(4)
+                while byte:
+                    data.extend(struct.unpack("f", byte))
+                    byte = f.read(4)
+
+            data = np.array(data[wavenumber_min*100:wavenumber_max*100:step_size])
+
+            return data
+
+
 
         mass_fraction = []
         molecular_mass = []
-        kappa = []
+
         for molecule in molecules:
             abundance_name = molecular_abundance_dict[molecule]
             mass_fraction.append([10**self.parameter_dict[abundance_name]])
             molecular_mass.append([molecular_mass_dict[molecule]])
-            opacity = self.molecular_opacity(my_temp, self.opacity_grid[molecule])
-            kappa.append([opacity])
 
         mass_fraction = np.array(mass_fraction)
         molecular_mass = np.array(molecular_mass)
-        kappa = np.array(kappa)
-        kappa = kappa.reshape(kappa.shape[0],kappa.shape[2])
 
         xh2 = (1 - np.sum(mass_fraction))/1.1   # calculate abundance of H2
         if 'm' not in globals():                # set mean molecular weight if not given in input
             m = 2.4*xh2*amu + np.sum(mass_fraction*molecular_mass)
+            
+        scale_height = kboltz*my_temp/m/G
 
-        pressure_cia = 10**self.parameter_dict["log_p_cia"]
 
-        if my_temp < 200:       # add in cia opacities
-            kappa_cia = 0
-        else:
-            sigma_h2he = self.cia_cross_section(my_temp, self.opacity_grid['cia_h2he'])
-            sigma_h2h2 = self.cia_cross_section(my_temp, self.opacity_grid['cia_h2h2'])
-            ntot = pressure_cia*1e6/kboltz/my_temp
-            kappa_cia = xh2 * ntot * (xh2 * sigma_h2h2 + 0.1*xh2 * sigma_h2he) / m
 
-        sigma_rayleigh = 8.4909e-45*(self.x_full**4)        # rayleigh scattering cross-section from Vardya (1962)
-        kappa_rayleigh = xh2*sigma_rayleigh/m
+        def tau(temperature, pmin, p0):
+        # Compute tau for all pressures
 
-        kappa_total_molecules = np.sum(mass_fraction*molecular_mass*kappa, axis=0) /m  # sum opacity contributions from molecules
-        kappa_total = kappa_total_molecules + kappa_cloud + kappa_cia + kappa_rayleigh      # add in cloud, rayleigh and cia opacities
+            pressure_array_pmin = pressure_array[np.where(pressure_array==pmin)[0][0]:] # remove everything below pmin
 
-        h = kboltz*my_temp/m/g
-        term1 = P0*kappa_total/g
-        term2 = np.sqrt(2.0*np.pi*R0/h)
-        r = R0 + h * (gamma + np.log(term1 * term2))
+            opacity_line_length = int((wavenumber_max-wavenumber_min)/res)
+            integrand_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))  # This will be the integrand
+                                                                                        # we will integrate over pressure,
+                                                                                        # for one temperature, for all wavelengths
 
-        result = 100.0 * (r / rstar) ** 2  # return percentage transit depth
+            # Load integrands for all pressures
+            for i, p in enumerate(pressure_array_pmin):
+                opacity = load_opacity(temperature, p)   # load opacity for this temperature
+                opacity  = opacity[1:]
+                integrand_grid[i] = opacity/np.sqrt(np.log(p0/p))   # compute kappa/sqrt(ln(P0/P))
+
+            kappa_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
+
+            factor = np.sqrt(2*scale_height*R0)/(kboltz*m)
+
+            # Integrate for each pressure p, from pmin to p
+            for i, p in enumerate(pressure_array_pmin):
+
+                pressure_sliced = pressure_array_pmin[:i+1]     # pass in pressure values and integrand values for all pressures
+                integrand_grid_sliced = integrand_grid[:i+1]    # below p, above pmin
+
+                integral_value = np.trapz(integrand_grid_sliced, pressure_sliced, axis=0)   # calculate integral using trapezoid approximation
+
+                kappa_grid[i] = factor*integral_value
+
+            tau_grid = kappa_grid*m_water     # convert opacity to cross-section
+
+            return pressure_array_pmin, tau_grid
+
+        pressure_values, tau_values = tau(my_temp, 1e-6, p0)
+
+
+
+        def h(temperature, pmin, p0):
+
+            pressure_array_pmin = pressure_array[np.where(pressure_array==pmin)[0][0]:np.where(pressure_array==pressure_array[-1])[0][0]] # remove everything below pmin
+
+            opacity_line_length = int((wavenumber_max-wavenumber_min)/res)
+            integrand_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))  # This will be the integrand
+                                                                                    # we will integrate over pressure,
+                                                                                    # for one temperature, for all wavelengths
+            # Load integrands for all pressures
+            for i, p in enumerate(pressure_array_pmin):
+           
+                integrand_grid[i] = (1 - np.exp(-tau_values[i]))/p * (R0 + scale_height*np.log(p0/p))
+
+            h_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
+
+            factor = scale_height/R0
+
+            # Integrate for each pressure p, from pmin to p
+            for i, p in enumerate(pressure_array_pmin):
+
+                pressure_sliced = pressure_array_pmin[:i+1]     # pass in pressure values and integrand values for all pressures
+                integrand_grid_sliced = integrand_grid[:i+1]    # below p, above pmin
+
+                integral_value = np.trapz(integrand_grid_sliced, pressure_sliced, axis=0)   # calculate integral using trapezoid approximation
+
+                h_grid[i] = factor*integral_value
+
+            return pressure_array_pmin, h_grid
+
+        pressure_values, h_values = h(my_temp, 1e-6, p0)
+
+
+
+        r = R0 + h_values
+
+        result = 100.0 * (r / Rstar) ** 2  # return percentage transit depth
         return result
+
 
 
     def binned_model(self):
@@ -106,5 +190,4 @@ class Model:
             y_mean = np.full(self.len_x, self.parameter_dict['line'])
             
         return y_mean
-
 
