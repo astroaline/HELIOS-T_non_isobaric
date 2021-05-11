@@ -2,6 +2,7 @@ from input import *
 from load_files import *
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+import json
 
 
 
@@ -42,7 +43,7 @@ class Model:
         G = self.parameter_dict["G"]
         pressure_cia = 10**self.parameter_dict["log_p_cia"]
 
-        res = 2     # resolution for the opacities
+        res = 5     # resolution for the opacities
         step_size = int(res/0.01)
 
         wavenumber_min = int(1e4/wavelength_bins[-1])
@@ -133,7 +134,7 @@ class Model:
             return pressure_array_pmin, tau_grid
 
         pressure_values, tau_values = tau(my_temp, 1e-6, p0)
-
+        
 
 
         def h(temperature, pmin, p0):
@@ -148,7 +149,7 @@ class Model:
             for i, p in enumerate(pressure_array_pmin):
            
                 integrand_grid[i] = (1 - np.exp(-tau_values[i]))/p * (R0 + scale_height*np.log(p0/p))
-
+                
             h_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
 
             factor = scale_height/R0
@@ -162,17 +163,17 @@ class Model:
                 integral_value = np.trapz(integrand_grid_sliced, pressure_sliced, axis=0)   # calculate integral using trapezoid approximation
 
                 h_grid[i] = factor*integral_value
-
+                
             return pressure_array_pmin, h_grid
 
         pressure_values, h_values = h(my_temp, 1e-6, p0)
 
 
-
         r = R0 + h_values
-
+        
         result = 100.0 * (r / Rstar) ** 2  # return percentage transit depth
         return result
+        
 
 
 
@@ -181,11 +182,15 @@ class Model:
 
         if self.parameter_dict['line'] == 'Off':
             y_full = self.transit_depth()
-            y_mean = np.zeros(self.len_x)
-            for i in range(self.len_x):
-                j = int(self.bin_indices[i])
-                k = int(self.bin_indices[i + 1])
-                y_mean[i] = np.mean(y_full[k:j])  # bin transit depth       
+            y_mean = np.zeros([self.len_x, len(max(y_full, key = lambda x: len(x)))])
+            print(y_full)
+            print(y_mean)
+            print(len(y_full[0]), len(y_mean[0]))
+            for m in range(self.len_x):
+                for i in range(self.len_x):
+                    j = int(self.bin_indices[i])
+                    k = int(self.bin_indices[i + 1])
+                    y_mean[m][i] = np.mean(y_full[m][k:j])  # bin transit depth
         else:
             y_mean = np.full(self.len_x, self.parameter_dict['line'])
             
