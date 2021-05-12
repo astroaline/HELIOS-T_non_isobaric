@@ -2,7 +2,6 @@ from input import *
 from load_files import *
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
-import json
 
 
 
@@ -181,18 +180,19 @@ class Model:
     ## calculates average transit depth in given bins ##
 
         if self.parameter_dict['line'] == 'Off':
-            y_full = self.transit_depth()
-            y_mean = np.zeros([self.len_x, len(max(y_full, key = lambda x: len(x)))])
-            print(y_full)
-            print(y_mean)
-            print(len(y_full[0]), len(y_mean[0]))
-            for m in range(self.len_x):
-                for i in range(self.len_x):
-                    j = int(self.bin_indices[i])
-                    k = int(self.bin_indices[i + 1])
-                    y_mean[m][i] = np.mean(y_full[m][k:j])  # bin transit depth
+            y_full_old = self.transit_depth()
+            y_full = [x[0] for x in y_full_old]
+            #y_mean = np.zeros([self.len_x, len(max(y_full, key = lambda x: len(x)))])
+            y_mean = np.zeros(self.len_x)
+            for i in range(self.len_x):
+                j = int(self.bin_indices[-2])
+                k = int(self.bin_indices[-1])
+                if len(y_full) == 0:
+                    pass
+                else:
+                    y_mean[i] = np.mean(y_full[k:j])  # bin transit depth
+                    print(y_mean)
         else:
             y_mean = np.full(self.len_x, self.parameter_dict['line'])
             
         return y_mean
-
