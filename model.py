@@ -42,11 +42,17 @@ class Model:
         G = self.parameter_dict["G"]
         pressure_cia = 10**self.parameter_dict["log_p_cia"]
 
-        res = 5     # resolution for the opacities
+        res = 2     # resolution for the opacities
         step_size = int(res/0.01)
 
         wavenumber_min = int(1e4/wavelength_bins[-1])
         wavenumber_max = int(1e4/wavelength_bins[0])
+
+        index_min = int((wavenumber_min)/res)
+        if res == 2:
+            index_max = int((wavenumber_max)/res) -
+        else:
+            index_max = int((wavenumber_max)/res)
 
         epsilon = 0.000001
         p0 = 10 + epsilon   # add some tiny value to p0 to avoid infinities in integration
@@ -67,15 +73,17 @@ class Model:
             filename = '1H2-16O__POKAZATEL_e2b/Out_00000_42000_'+temp_str+'_'+pressure_str+'.bin'
 
             data = []
+            opacity_table = []
             with open(opacity_path + filename, "rb") as f:
                 byte = f.read(4)
                 while byte:
                     data.extend(struct.unpack("f", byte))
                     byte = f.read(4)
 
-            data = np.array(data[wavenumber_min*100:wavenumber_max*100:step_size])
+            data = np.array(data[index_min*step_size:index_max*step_size:step_size])
 
             return data
+
 
 
 
@@ -103,7 +111,7 @@ class Model:
 
             pressure_array_pmin = pressure_array[np.where(pressure_array==pmin)[0][0]:] # remove everything below pmin
 
-            opacity_line_length = int((wavenumber_max-wavenumber_min)/res)
+            opacity_line_length = int((wavenumber_max-wavenumber_min)/res) 
             integrand_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))  # This will be the integrand
                                                                                         # we will integrate over pressure,
                                                                                         # for one temperature, for all wavelengths
@@ -111,8 +119,10 @@ class Model:
             # Load integrands for all pressures
             for i, p in enumerate(pressure_array_pmin):
                 opacity = load_opacity(temperature, p)   # load opacity for this temperature
-                opacity  = opacity[1:]
+                #print(opacity.shape)
+                #opacity  = opacity[1:]
                 integrand_grid[i] = opacity/np.sqrt(np.log(p0/p))   # compute kappa/sqrt(ln(P0/P))
+                #print(len(integrand_grid))
 
             kappa_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
 
@@ -133,6 +143,7 @@ class Model:
             return pressure_array_pmin, tau_grid
 
         pressure_values, tau_values = tau(my_temp, 1e-6, p0)
+        #print(tau_values.shape)
         
 
 
@@ -148,6 +159,7 @@ class Model:
             for i, p in enumerate(pressure_array_pmin):
            
                 integrand_grid[i] = (1 - np.exp(-tau_values[i]))/p * (R0 + scale_height*np.log(p0/p))
+                #print(len(integrand_grid))
                 
             h_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
 
@@ -166,6 +178,7 @@ class Model:
             return pressure_array_pmin, h_grid
 
         pressure_values, h_values = h(my_temp, 1e-6, p0)
+        #print(h_values.shape)
 
 
         r = R0 + h_values
@@ -191,7 +204,8 @@ class Model:
                     pass
                 else:
                     y_mean[i] = np.mean(y_full[k:j])  # bin transit depth
-                    print(y_mean)
+                    #print(len(y_mean))
+                    #print(y_mean)
         else:
             y_mean = np.full(self.len_x, self.parameter_dict['line'])
             
