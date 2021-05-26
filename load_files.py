@@ -10,7 +10,7 @@ def load_opacity_data(molecule):
     wavenumber_max = 1e4/wavelength_bins[0]
 
     index_min = int((wavenumber_min)/res)
-    index_max = int((wavenumber_max)/res) + 1
+    index_max = int((wavenumber_max)/res) - 1
 
     for param in parameters:
         if param == 'log_xh2o':
