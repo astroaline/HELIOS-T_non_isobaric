@@ -149,36 +149,29 @@ class Model:
 
         def h(temperature, pmin, p0):
 
-            pressure_array_pmin = pressure_array[np.where(pressure_array==pmin)[0][0]:np.where(pressure_array==pressure_array[-1])[0][0]] # remove everything below pmin
+            new_integrand = np.zeros((len(pressure_values),tau_values.shape[1]))
 
-            opacity_line_length = int((wavenumber_max-wavenumber_min)/res)
-            integrand_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))  # This will be the integrand
-                                                                                    # we will integrate over pressure,
-                                                                                    # for one temperature, for all wavelengths
-            # Load integrands for all pressures
-            for i, p in enumerate(pressure_array_pmin):
-           
-                integrand_grid[i] = (1 - np.exp(-tau_values[i]))/p * (R0 + scale_height*np.log(p0/p))
-                #print(len(integrand_grid))
-                
-            h_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
+            for i in range(len(pressure_values)):
 
-            factor = scale_height/R0
+                new_integrand[i] = ((1 - np.exp(-tau_values[i,:]))/pressure_values[i])*(R0 + scale_height*np.log(p0/pressure_values[i]))
 
-            # Integrate for each pressure p, from pmin to p
-            for i, p in enumerate(pressure_array_pmin):
+            print(new_integrand)
 
-                pressure_sliced = pressure_array_pmin[:i+1]     # pass in pressure values and integrand values for all pressures
-                integrand_grid_sliced = integrand_grid[:i+1]    # below p, above pmin
+            factor = scale_height/R0 
 
-                integral_value = np.trapz(integrand_grid_sliced, pressure_sliced, axis=0)   # calculate integral using trapezoid approximation
+            #integral_value = np.trapz(new_integrand, pressure_values, axis=1)
+            integral_value = np.zeros(tau_values.shape[1])
 
-                h_grid[i] = factor*integral_value
-                
-            return pressure_array_pmin, h_grid
+            for j in range(tau_values.shape[1]):
+
+                integral_value[j] = np.trapz(new_integrand[:,j], pressure_values)
+
+            h_values = factor*integral_value           
+   
+            return pressure_values, h_values
 
         pressure_values, h_values = h(my_temp, 1e-6, p0)
-        #print(h_values.shape)
+        #print(h_values)
 
 
         r = R0 + h_values
