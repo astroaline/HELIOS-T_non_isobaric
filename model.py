@@ -50,7 +50,7 @@ class Model:
 
         index_min = int((wavenumber_min)/res)
         if res == 2:
-            index_max = int((wavenumber_max)/res) -
+            index_max = int((wavenumber_max)/res) - 1
         else:
             index_max = int((wavenumber_max)/res)
 
@@ -119,10 +119,8 @@ class Model:
             # Load integrands for all pressures
             for i, p in enumerate(pressure_array_pmin):
                 opacity = load_opacity(temperature, p)   # load opacity for this temperature
-                #print(opacity.shape)
-                #opacity  = opacity[1:]
+                
                 integrand_grid[i] = opacity/np.sqrt(np.log(p0/p))   # compute kappa/sqrt(ln(P0/P))
-                #print(len(integrand_grid))
 
             kappa_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
 
@@ -143,40 +141,38 @@ class Model:
             return pressure_array_pmin, tau_grid
 
         pressure_values, tau_values = tau(my_temp, 1e-6, p0)
-        #print(tau_values.shape)
+        
         
 
 
         def h(temperature, pmin, p0):
 
-            new_integrand = np.zeros((len(pressure_values),tau_values.shape[1]))
+            h_values = np.zeros(len(tau_values[0]))
 
-            for i in range(len(pressure_values)):
+            for i in range(len(tau_values[0])):        # This should be 1458
 
-                new_integrand[i] = ((1 - np.exp(-tau_values[i,:]))/pressure_values[i])*(R0 + scale_height*np.log(p0/pressure_values[i]))
+                new_integrand = np.zeros(len(pressure_values))
+ 
+                for j in range(len(pressure_values)):       # This should be 22
 
-            print(new_integrand)
+                    new_integrand[j] = (1 - np.exp(-tau_values[j,i]))/pressure_values[j]*(R0 + scale_height*np.log(p0/pressure_values[j]))
+                    print(new_integrand)
+                integral_value = np.trapz(new_integrand, pressure_values)     # This should be a scalar
+                print(integral_value)
+           
+                h_values[i] = (scale_height/R0)*integral_value          
 
-            factor = scale_height/R0 
-
-            #integral_value = np.trapz(new_integrand, pressure_values, axis=1)
-            integral_value = np.zeros(tau_values.shape[1])
-
-            for j in range(tau_values.shape[1]):
-
-                integral_value[j] = np.trapz(new_integrand[:,j], pressure_values)
-
-            h_values = factor*integral_value           
-   
             return pressure_values, h_values
 
         pressure_values, h_values = h(my_temp, 1e-6, p0)
         #print(h_values)
 
 
+
         r = R0 + h_values
         
         result = 100.0 * (r / Rstar) ** 2  # return percentage transit depth
+        #print(result)
         return result
         
 
@@ -185,20 +181,15 @@ class Model:
     def binned_model(self):
     ## calculates average transit depth in given bins ##
 
+
         if self.parameter_dict['line'] == 'Off':
-            y_full_old = self.transit_depth()
-            y_full = [x[0] for x in y_full_old]
-            #y_mean = np.zeros([self.len_x, len(max(y_full, key = lambda x: len(x)))])
+            y_full = self.transit_depth()
+            #print(y_full)
             y_mean = np.zeros(self.len_x)
             for i in range(self.len_x):
-                j = int(self.bin_indices[-2])
-                k = int(self.bin_indices[-1])
-                if len(y_full) == 0:
-                    pass
-                else:
-                    y_mean[i] = np.mean(y_full[k:j])  # bin transit depth
-                    #print(len(y_mean))
-                    #print(y_mean)
+                j = int(self.bin_indices[i])
+                k = int(self.bin_indices[i + 1])
+                y_mean[i] = np.mean(y_full[k:j])  # bin transit depth      
         else:
             y_mean = np.full(self.len_x, self.parameter_dict['line'])
             
