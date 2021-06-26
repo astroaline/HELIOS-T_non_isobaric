@@ -124,7 +124,7 @@ class Model:
 
             kappa_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
 
-            factor = np.sqrt(2*scale_height*R0)/(kboltz*m)
+            factor = np.sqrt(2*scale_height*R0)/(kboltz*temperature)
 
             # Integrate for each pressure p, from pmin to p
             for i, p in enumerate(pressure_array_pmin):
