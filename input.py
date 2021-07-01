@@ -62,7 +62,7 @@ parameter_dict = {"T": 1000, "log_xh2o": "Off", "log_xch4": "Off", "log_xco": "O
 
 molecular_mass_dict = {'1H2-16O__POKAZATEL_e2b': m_water, '12C-1H4__YT10to10_e2b': m_methane, '12C-16O__HITEMP2010_e2b': m_carbon_monoxide}   # dictionary of molecules and their mean molecular masses
 temperature_array = np.r_[50:700:50, 700:1500:100, 1500:2900:200]
-temp_dict = {'1H2-16O__POKAZATEL_e2b': temperature_array[9:], '12C-1H4__YT10to10_e2b': temperature_array[9:], '12C-16O__HITEMP2010_e2b': temperature_array}   # temperature values for corresponding opacity tables
+temp_dict = {'1H2-16O__POKAZATEL_e2b': temperature_array, '12C-1H4__YT10to10_e2b': temperature_array, '12C-16O__HITEMP2010_e2b': temperature_array}   # temperature values for corresponding opacity tables
 temperature_array_cia = np.r_[200:3025:25]          # temperature array for CIA table
 opacity_path = os.environ['HOME'] + "/Desktop/PhD/OPACITIES/"  # path to opacity binary files
 cia_path = os.environ['HOME'] + "/Desktop/PhD/HITRAN/"      # path to CIA files
