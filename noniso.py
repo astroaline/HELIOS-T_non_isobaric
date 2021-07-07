@@ -3,7 +3,7 @@ from load_files import *
 import numpy as np
 
 
-def load_opacity(temperature, pressure, molecule):
+def load_opacity(temperature, pressure):
     res = 2     # resolution for the opacities
     step_size = int(res/0.01)
 
