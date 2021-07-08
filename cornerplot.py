@@ -330,12 +330,12 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
                     ax.set_title(title, **title_kwargs)
 
         # Fix ranges #
-        #if ini_guess is not None and ini_guess[i] is not None:
-        #    mu = ini_guess[i][0]
-        #    sigma = ini_guess[i][1]
-        #    ax.set_xlim((mu - 3*sigma, mu + 3*sigma))
-        #else:
-        ax.set_xlim(range2[i])
+        if ini_guess is not None and ini_guess[i] is not None:
+            mu = ini_guess[i][0]
+            sigma = ini_guess[i][1]
+            ax.set_xlim((mu - 3*sigma, mu + 3*sigma))
+        else:
+            ax.set_xlim(range2[i])
         if scale_hist:
             maxn = np.max(n)
             ax.set_ylim(-0.1 * maxn, 1.1 * maxn)
