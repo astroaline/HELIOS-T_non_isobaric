@@ -54,22 +54,24 @@ def tau(temperature, pmin, p0):
     wavenumber_max = int(1e4/wavelength_bins[0])
     opacity_line_length = int((wavenumber_max - wavenumber_min) / res)
  
-    if (opacity_line_length % 2) == 0:
-        opacity_line_length = int((wavenumber_max - wavenumber_min) / res)
-    else:
-        opacity_line_length = int((wavenumber_max - wavenumber_min) / res) - 1
+    #if (opacity_line_length % 2) == 0:
+    #    opacity_line_length = int((wavenumber_max - wavenumber_min) / res)
+    #else:
+    #    opacity_line_length = int((wavenumber_max - wavenumber_min) / res) - 1
 
-    integrand_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))  # This will be the integrand
+    
     # we will integrate over pressure,
     # for one temperature, for all wavelengths
 
     # Load integrands for all pressures
     for i, p in enumerate(pressure_array_pmin):
         opacity, x_full = load_opacity(temperature, p)  # load opacity for this temperature
-        #print(len(opacity), len(x_full))
+        
+        integrand_grid = np.zeros((len(pressure_array_pmin), len(x_full)))  # This will be the integrand
+
         integrand_grid[i] = opacity / np.sqrt(np.log(p0 / p))  # compute kappa/sqrt(ln(P0/P))
 
-    integral_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
+        integral_grid = np.zeros((len(pressure_array_pmin), len(x_full)))
 
 
     # Integrate for each pressure p, from pmin to p
