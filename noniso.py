@@ -66,7 +66,7 @@ def tau(temperature, pmin, p0):
     # Load integrands for all pressures
     for i, p in enumerate(pressure_array_pmin):
         opacity, x_full = load_opacity(temperature, p)  # load opacity for this temperature
-        print(len(opacity), len(x_full))
+        #print(len(opacity), len(x_full))
         integrand_grid[i] = opacity / np.sqrt(np.log(p0 / p))  # compute kappa/sqrt(ln(P0/P))
 
     integral_grid = np.zeros((len(pressure_array_pmin), opacity_line_length))
