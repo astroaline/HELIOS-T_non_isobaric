@@ -121,7 +121,7 @@ class Model:
 
         tau_values_int = integral_molecules_sum + integral_grid_cia*xh2*xh2 + integral_grid_rayleigh*xh2   # array of (200,1458)
 
-        factor = 2 * np.sqrt(2 * scale_height * (R0 + scale_height * np.log(p0_cgs / pressure_levels))) / kboltz / my_temp  # array of 200 points
+        factor = 2 * np.sqrt(2 * scale_height * R0) / kboltz / my_temp  # array of 200 points
         tau_val = (tau_values_int.T * factor).T + cloud_tau # vectorised version of factor*tau_values_int, gives array of (200,1458)
         h_integrand1 = (R0 + scale_height * np.log(p0_cgs / pressure_levels)) / pressure_levels  # array of 200 points
         h_integrand2 = 1 - np.exp(-tau_val)  # array of (200,1458)

@@ -14,10 +14,10 @@ import os
 import csv
 import pdb
 import pandas as pd
-import sys
 
 start = time.time()
 
+print('\n\n\n' + 'n_live_points = ' + str(live) + '        num_levels = ' + str(num_levels))
 print('\n\n\n' + 'now running .................... ' + planet_file + '\n\n\n')
 
 #planet_file = planet_name + '_' + approach_name + '_' + model_name
@@ -36,11 +36,10 @@ len_x = len(x)
 # Run PyMultinest ##
 b = ns_setup.Priors(1, n_params)
 pymultinest.run(b.loglike, b.prior, n_params,
-		loglike_args=[len_x, x_full, bin_indices, integral_dict, ydata, yerr],
+		        loglike_args=[len_x, x_full, bin_indices, integral_dict, ydata, yerr],
                 outputfiles_basename=output_directory + planet_name + '_',
                 resume=False, verbose=False,
                 n_live_points=live)   # verbose is False if you do not want to print information while running code
-
 
 json.dump(parameters, open(output_directory+planet_name+'_params.json', 'w'))  # save parameter names
 
@@ -135,33 +134,33 @@ else:
 
 
     ## plot posteriors ##
-    retrieved_parameter_labels = []
-    posterior_ranges = []
-    color_list = []
+    posterior_ranges, retrieved_parameter_labels, labels_units, labels_format, color_list = [], [], [], [], []
+    
     for param in parameters:
-        posterior_ranges.append(parameter_ranges[param])
         retrieved_parameter_labels.append(parameter_labels[param])
-        color_list.append(parameter_colors[param])
+        color_list.append(parameter_colors[param])    
+        labels_units.append(parameter_units[param])
+        labels_format.append(parameter_format[param])
+        #posterior_ranges.append(parameter_ranges[param])
 
+    for i, param in enumerate(parameters):
+        new_param_ranges = [float(np.percentile(samples[i], [1])), float(np.percentile(samples[i], [100]))] 
+        posterior_ranges.append(new_param_ranges)
 
-    # posterior_ranges[3] = [0.7, 0.81]
-    # pdb.set_trace()
-    for i in range(len(parameters)):
-        posterior_ranges[i][0] = np.minimum(posterior_ranges[i][0], min(samples[:,i]))
-        posterior_ranges[i][1] = np.maximum(posterior_ranges[i][1], max(samples[:,i]))
-
-    fig = cornerplot.corner(samples, x_full_plot, wavelength_centre, yfit, yfit_binned, ydata, wavelength_err, yerr, posterior_ranges, color_list,
-                            labels=retrieved_parameter_labels, truths=plot_percentiles, max_n_ticks=3)
-    fig2 = spectrum.spec(samples, x_full_plot, wavelength_centre, yfit, yfit_binned, ydata, wavelength_err, yerr, posterior_ranges, color_list,
-                            labels=retrieved_parameter_labels, truths=plot_percentiles, max_n_ticks=3)
+    line_color = 'b'
+    
+    fig = cornerplot.corner(samples, x_full_plot, wavelength_centre, yfit, yfit_binned, ydata, wavelength_err, yerr, posterior_ranges, line_color, color_list,
+                            labels=retrieved_parameter_labels, labels_units=labels_units, truths=plot_percentiles, title_fmt=labels_format, max_n_ticks=3, show_titles=True)       
+    fig2 = spectrum.spec(samples, x_full_plot, wavelength_centre, yfit, yfit_binned, ydata, wavelength_err, yerr, posterior_ranges, line_color, color_list,
+                         labels=retrieved_parameter_labels, truths=plot_percentiles, max_n_ticks=3)  
 
     fig_name = 'cornerplot_' + planet_file
     fig.savefig(planet_path + 'CORNERPLOTS/' + fig_name + '.png', format='png')
-    fig.savefig(planet_path + 'CORNERPLOTS/' + fig_name + '.eps', format='pdf')
+    fig.savefig(planet_path + 'CORNERPLOTS/' + fig_name + '.pdf', format='pdf')
 
     fig2_name = 'spectrum_' + planet_file
     fig2.savefig(planet_path + 'SPECTRA/' + fig2_name + '.png', bbox_inches='tight', pad_inches=0.2, format='png')
-    fig2.savefig(planet_path + 'SPECTRA/' + fig2_name + '.eps', bbox_inches='tight', pad_inches=0.2, format='pdf')
+    fig2.savefig(planet_path + 'SPECTRA/' + fig2_name + '.pdf', bbox_inches='tight', pad_inches=0.2, format='pdf')
 
 
 end = time.time()

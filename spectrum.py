@@ -22,7 +22,7 @@ matplotlib.rc('text', usetex=True)
 matplotlib.rc('font', family='serif')
 
 
-def spec(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list, bins=20, range=None, weights=None, color="k",
+def spec(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, line_color, bins=20, range=None, weights=None, color="k",
          smooth=None, smooth1d=None,
          labels=None, label_kwargs=None,
          show_titles=False, title_fmt=".2f", title_kwargs=None,
@@ -47,7 +47,7 @@ def spec(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list, 
 
     ax2.set_frame_on(True)
     linethick = 1
-    line1, = ax2.plot(xfull, yfull, linewidth=linethick, color='b', linestyle='-')
+    line1, = ax2.plot(xfull, yfull, linewidth=linethick, color=line_color, linestyle='-')
     symsize2 = 1
     mew1 = 12
     msize = 12
@@ -62,8 +62,12 @@ def spec(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list, 
     wavelength_max = np.amax(wavelength_bins)
     transit_min = np.amin(transit_depth)
     transit_max = np.amax(transit_depth)
-    ax2.text(0.06, 0.93, r'\textbf{' + planet_name + r'} \textbf{data}', transform=ax2.transAxes, color='r', fontsize=text_size)
-    ax2.text(0.06, 0.88, r'\textbf{Model (binned)}', transform=ax2.transAxes, color='k', fontsize=text_size)
+    if wavelength_min < 1.0:
+        ax2.text(0.82*wavelength_min + 0.1*wavelength_max, 2.7*transit_max - 1.7*transit_min, r'\textbf{' + planet_name + r'} \textbf{data}', color='r', fontsize=text_size)
+        ax2.text(0.82*wavelength_min + 0.1*wavelength_max, 2.47*transit_max - 1.47*transit_min, r'\textbf{Model (binned)}', color='k', fontsize=text_size)    
+    else:
+        ax2.text(0.855*wavelength_min + 0.1*wavelength_max, 2.7*transit_max - 1.7*transit_min, r'\textbf{' + planet_name + r'} \textbf{data}', color='r', fontsize=text_size)
+        ax2.text(0.855*wavelength_min + 0.1*wavelength_max, 2.47*transit_max - 1.47*transit_min, r'\textbf{Model (binned)}', color='k', fontsize=text_size)
     ax2.set_xlim([wavelength_min - 0.03, wavelength_max + 0.03])
     ax2.set_ylim([1.5*transit_min - 0.5*transit_max, 3*transit_max - 2*transit_min])
     ax2.xaxis.set_major_locator(MaxNLocator(5, prune="lower"))

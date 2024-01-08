@@ -23,12 +23,26 @@ matplotlib.rc('font', family='serif')
 #matplotlib.rcParams['text.latex.preamble'] = r'\boldmath'
 
 
-def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list, bins=20, range=None, weights=None, color="k",
+ini_guess_0 = [None] * len(parameters)
+
+if 'Rstar' in parameters or 'G' in parameters:
+    if 'Rstar' in parameters and 'G' not in parameters:
+        ini_guess_0 = ini_guess_0[:-1]
+        ini_guess_0.append((rstar, rstar_uncertainty))
+    elif 'G' in parameters and 'Rstar' not in parameters:
+        ini_guess_0 = ini_guess_0[:-1]
+        ini_guess_0.append((g, g_uncertainty))
+    elif 'Rstar' in parameters and 'G' in parameters:
+        ini_guess_0 = ini_guess_0[:-2]
+        ini_guess_0.append((rstar, rstar_uncertainty))
+        ini_guess_0.append((g, g_uncertainty))
+
+def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, line_color, color_list, bins=20, range=None, weights=None, color="k",
            smooth=None, smooth1d=None,
-           labels=None, label_kwargs=None,
-           show_titles=False, title_fmt=".2f", title_kwargs=None,
+           labels=None, labels_units=None, label_kwargs=None,
+           show_titles=False, title_fmt=None, title_kwargs=None,
            truths=None, truth_color="k",
-           ini_guess = [None]*(len(parameters)-2) + [(rstar, rstar_uncertainty), (g, g_uncertainty)],
+           ini_guess = ini_guess_0,
            density=True,
            scale_hist=False, quantiles=None, verbose=False, fig=None,
            max_n_ticks=5, top_ticks=False, use_math_text=False, reverse=False,
@@ -195,7 +209,7 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
 
     # Create a new figure if one wasn't provided.
     if fig is None:
-        fig, axes = plt.subplots(K, K, figsize=(dim, dim))
+        fig, axes = plt.subplots(K, K, figsize=(dim, dim)) ############################################################################### * 0.5
     else:
         try:
             axes = np.array(fig.axes).reshape((K, K))
@@ -287,22 +301,22 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
                 q_m, q_p = q_50-q_16, q_84-q_50
 
                 # Format the quantile display.
-                fmt = "{{0:{0}}}".format(title_fmt).format
+                fmt = "{{0:{0}}}".format(title_fmt[i]).format
                 title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
                 title = title.format(fmt(q_50), fmt(q_m), fmt(q_p))
 
                 # Add in the column name if it's given.
                 if labels is not None:
-                    title = "{0} = {1}".format(labels[i], title)
+                    title = "{0} {1}".format(title, labels_units[i])
 
             elif labels is not None:
                 title = "{0}".format(labels[i])
 
             if title is not None:
                 if reverse:
-                    ax.set_xlabel(title, **title_kwargs)
+                    ax.set_xlabel(r'\boldmath{' + title + '}', size=font_size*0.8, pad=10, color=sigma_color, **title_kwargs)
                 else:
-                    ax.set_title(title, **title_kwargs)
+                    ax.set_title(r'\boldmath{' + title + '}', size=font_size*0.8, pad=10, color=sigma_color, **title_kwargs)
 
         # Fix ranges #
         if ini_guess is not None and ini_guess[i] is not None:
@@ -321,7 +335,7 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
             ax.xaxis.set_major_locator(NullLocator())
             ax.yaxis.set_major_locator(NullLocator())
         else:
-            ax.xaxis.set_major_locator(MaxNLocator(max_n_ticks, prune="lower"))
+            ax.xaxis.set_major_locator(MaxNLocator(max_n_ticks, prune='lower'))
             ax.yaxis.set_major_locator(NullLocator())
 
         if i < K - 1:
@@ -336,9 +350,9 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
             [l.set_rotation(45) for l in ax.get_xticklabels()]
             if labels is not None:
                 if reverse:
-                    ax.set_title(labels[i], y=1.25, fontsize=font_size)
+                    ax.set_title(labels[i], y=1.25, fontsize=font_size)   # all parameters in x axis, except last one
                 else:
-                    ax.set_xlabel(labels[i], fontsize=font_size)
+                    ax.set_xlabel(labels[i], fontsize=font_size)   # last parameter in x (e.g. gravity)
 
             # use MathText for axes ticks
             ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=use_math_text))
@@ -381,8 +395,8 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
                 ax.xaxis.set_major_locator(NullLocator())
                 ax.yaxis.set_major_locator(NullLocator())
             else:
-                ax.xaxis.set_major_locator(MaxNLocator(max_n_ticks, prune="lower"))
-                ax.yaxis.set_major_locator(MaxNLocator(max_n_ticks, prune="lower"))
+                ax.xaxis.set_major_locator(MaxNLocator(max_n_ticks, prune='lower'))
+                ax.yaxis.set_major_locator(MaxNLocator(max_n_ticks, prune='lower'))
 
             if i < K - 1:
                 ax.set_xticklabels([])
@@ -408,10 +422,10 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
                 [l.set_rotation(45) for l in ax.get_yticklabels()]
                 if labels is not None:
                     if reverse:
-                        ax.set_ylabel(labels[i], rotation=-90, fontsize=font_size, zorder=100)
+                        ax.set_ylabel(labels[i], rotation=-90, fontsize=font_size, zorder=100)   # all parameters in y axis, except last one
                         ax.yaxis.set_label_coords(1.0, 0.5) #(1.3, 0.5)
                     else:
-                        ax.set_ylabel(labels[i], fontsize=font_size)
+                        ax.set_ylabel(labels[i], fontsize=font_size)   # all parameters in y axis, except last one
                         ax.yaxis.set_label_coords(-0.25 -0.01*K, 0.5) #(-0.3, 0.5)
 
                     ax.tick_params(axis='both', which='major', direction='in', length=tick_size, labelsize=tick_label_size, pad=6)
@@ -445,7 +459,7 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
     elw = (2.5*K/3)/frac
         
     ax.set_frame_on(True)
-    line1, = ax.plot(xfull, yfull, linewidth=linethick, color='b', linestyle='-')
+    line1, = ax.plot(xfull, yfull, linewidth=linethick, color=line_color, linestyle='-')
     ax.errorbar(xbin, ybin, xerr=x_err, yerr=y_err, fmt='ks', elinewidth=elw)
     ax.plot(xbin, ybin, 'ks', mew=mew1, markersize=msize)
     ax.errorbar(xbin, ydata, xerr=x_err, yerr=y_err, fmt='ro', capthick=2, elinewidth=elw, zorder=1000)
@@ -454,15 +468,23 @@ def corner(xs, xfull, xbin, yfull, ybin, ydata, x_err, y_err, range2, color_list
     wavelength_max = np.amax(wavelength_bins)
     transit_min = np.amin(transit_depth)
     transit_max = np.amax(transit_depth)
-    ax.text(0.855*wavelength_min + 0.1*wavelength_max, 2.7*transit_max - 1.7*transit_min, r'\textbf{' + planet_name + r'} \textbf{data}', color='r', fontsize=text_size)
-    ax.text(0.855*wavelength_min + 0.1*wavelength_max, 2.47*transit_max - 1.47*transit_min, r'\textbf{Model (binned)}', color='k', fontsize=text_size)
+    if wavelength_min < 1.0:
+        ax.text(0.82*wavelength_min + 0.1*wavelength_max, 2.7*transit_max - 1.7*transit_min, r'\textbf{' + planet_name + r'} \textbf{data}', color='r', fontsize=text_size)
+        ax.text(0.82*wavelength_min + 0.1*wavelength_max, 2.47*transit_max - 1.47*transit_min, r'\textbf{Model (binned)}', color='k', fontsize=text_size)    
+    else:
+        ax.text(0.855*wavelength_min + 0.1*wavelength_max, 2.7*transit_max - 1.7*transit_min, r'\textbf{' + planet_name + r'} \textbf{data}', color='r', fontsize=text_size)
+        ax.text(0.855*wavelength_min + 0.1*wavelength_max, 2.47*transit_max - 1.47*transit_min, r'\textbf{Model (binned)}', color='k', fontsize=text_size)
     ax.set_xlim([wavelength_min - 0.03, wavelength_max + 0.03])
-    ax.set_ylim([1.5*transit_min - 0.5*transit_max, 3*transit_max - 2*transit_min])
-    ax.xaxis.set_major_locator(MaxNLocator(5, prune="lower"))
-    ax.yaxis.set_major_locator(MaxNLocator(5, prune="lower"))
+    ylim = [1.5*transit_min - 0.5*transit_max, 3*transit_max - 2*transit_min]
+    ax.set_ylim(ylim)
+    ax.xaxis.set_major_locator(MaxNLocator(5, prune='lower'))
+    ax.yaxis.set_major_locator(MaxNLocator(3, prune='lower'))
+    yticks = ax.get_yticks()
+    if (abs(yticks[0] - ylim[0]) < 0.11*abs(yticks[1] - yticks[0])):
+        ax.set_yticks(yticks[1:-1])
     ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=use_math_text))
     ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=use_math_text))
-    ax.tick_params(axis='both', which='major', direction='in', length=tick_size2, labelsize=tick_label_size2, pad=2*K)
+    ax.tick_params(axis='both', which='major', direction='in', length=tick_size2, labelsize=tick_label_size2, pad=K)
     ax.set_xlabel(r'Wavelength ($\mu$m)', fontsize=label_size2, labelpad=label_pad)
     ax.set_ylabel(r'($R$/$R_{\rm star}$)$^2$ (\%)', fontsize=label_size2, labelpad=label_pad)
     #ax.set_xlabel(r'\textbf{Wavelength (}\boldmath{$\mu$}\textbf{m)}', fontsize=label_size2, labelpad=100)
